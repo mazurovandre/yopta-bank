@@ -4,6 +4,7 @@ import {
   HttpException,
   HttpStatus,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { AuthCredentialsDto } from './dto/auth-credentials.dto';
@@ -64,22 +65,19 @@ export class AuthService {
         refresh_token: refreshToken,
       };
     } catch (error) {
-      console.log('====>', error);
+      Logger.error('Token generation error', error);
+
       throw new UnauthorizedException();
     }
   }
 
   async refreshToken(token: string) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const payload = await this.jwtService.verifyAsync(token);
+    const payload: JwtPayload = await this.jwtService.verifyAsync(token);
 
-    return {
-      access_token: await this.jwtService.signAsync(payload, {
-        expiresIn: '15m',
-      }),
-      refresh_token: await this.jwtService.signAsync(payload, {
-        expiresIn: '7d',
-      }),
-    };
+    if (!payload) {
+      throw new UnauthorizedException();
+    }
+
+    return this.generateToken(payload.sub, payload.username);
   }
 }
