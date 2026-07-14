@@ -36,10 +36,10 @@ export class UsersService {
 
   async findAll(
     options: IPaginationOptions,
-    username: string | undefined,
     ageFrom: number,
     ageTo: number,
-    email: string | undefined,
+    username?: string,
+    email?: string,
   ): Promise<Pagination<User>> {
     const where: FindOptionsWhere<User> = {
       age: Between(ageFrom, ageTo),

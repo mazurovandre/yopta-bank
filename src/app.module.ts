@@ -1,12 +1,10 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { UsersModule } from './features/users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { databaseConfig } from './configs/database.config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ProfileModule } from './profile/profile.module';
+import { ProfileModule } from './features/profile/profile.module';
 
 @Module({
   imports: [
@@ -31,7 +29,7 @@ import { ProfileModule } from './profile/profile.module';
     AuthModule,
     ProfileModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [],
+  providers: [],
 })
 export class AppModule {}
