@@ -1,9 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Between, FindOptionsWhere, ILike, Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import {
+  IPaginationOptions,
+  paginate,
+  Pagination,
+} from 'nestjs-typeorm-paginate';
 
 @Injectable()
 export class UsersService {
@@ -29,8 +34,26 @@ export class UsersService {
     });
   }
 
-  async findAll(): Promise<User[]> {
-    return this.userRepository.find();
+  async findAll(
+    options: IPaginationOptions,
+    username: string | undefined,
+    ageFrom: number,
+    ageTo: number,
+    email: string | undefined,
+  ): Promise<Pagination<User>> {
+    const where: FindOptionsWhere<User> = {
+      age: Between(ageFrom, ageTo),
+    };
+
+    if (username) {
+      where.username = ILike(`%${username}%`);
+    }
+
+    if (email) {
+      where.email = ILike(`%${email}%`);
+    }
+
+    return paginate<User>(this.userRepository, options, { where });
   }
 
   async update(
