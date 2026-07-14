@@ -49,21 +49,37 @@ export class AuthService {
     return this.generateToken(id, username);
   }
 
-  generateToken(id: number, username: string) {
+  async generateToken(id: number, username: string) {
     const payload: JwtPayload = { sub: id, username };
+    try {
+      const accessToken = await this.jwtService.signAsync(payload, {
+        expiresIn: '15m',
+      });
+      const refreshToken = await this.jwtService.signAsync(payload, {
+        expiresIn: '7d',
+      });
 
-    return {
-      access_token: this.jwtService.signAsync(payload, { expiresIn: '15m' }),
-      refresh_token: this.jwtService.signAsync(payload, { expiresIn: '7d' }),
-    };
+      return {
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      };
+    } catch (error) {
+      console.log('====>', error);
+      throw new UnauthorizedException();
+    }
   }
 
-  refreshToken(token: string) {
-    const payload = this.jwtService.verifyAsync(token);
+  async refreshToken(token: string) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const payload = await this.jwtService.verifyAsync(token);
 
     return {
-      access_token: this.jwtService.signAsync(payload, { expiresIn: '15m' }),
-      refresh_token: this.jwtService.signAsync(payload, { expiresIn: '7d' }),
+      access_token: await this.jwtService.signAsync(payload, {
+        expiresIn: '15m',
+      }),
+      refresh_token: await this.jwtService.signAsync(payload, {
+        expiresIn: '7d',
+      }),
     };
   }
 }
