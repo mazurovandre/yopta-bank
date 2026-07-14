@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, FindOptionsWhere, ILike, Repository } from 'typeorm';
+import * as bcrypt from 'bcrypt';
 import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -60,12 +61,28 @@ export class UsersService {
     userId: number,
     updateUserDto: UpdateUserDto,
   ): Promise<User | null> {
+    const user = await this.findOneById(userId);
+
+    if (!user) {
+      throw new NotFoundException();
+    }
+
+    if (updateUserDto.password) {
+      updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
+    }
+
     await this.userRepository.update(userId, updateUserDto);
 
     return this.findOneById(userId);
   }
 
   async remove(id: number): Promise<void> {
+    const user = await this.findOneById(id);
+
+    if (!user) {
+      throw new NotFoundException();
+    }
+
     await this.userRepository.softDelete(id);
   }
 }

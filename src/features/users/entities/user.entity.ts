@@ -5,6 +5,7 @@ import {
   Entity,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { Exclude } from 'class-transformer';
 
 @Entity()
 export class User extends BaseEntity {
@@ -14,6 +15,7 @@ export class User extends BaseEntity {
   @Column({ type: 'varchar', unique: true })
   username: string;
 
+  @Exclude()
   @Column({ type: 'varchar' })
   password: string;
 
@@ -26,6 +28,7 @@ export class User extends BaseEntity {
   @Column({ type: 'varchar', length: 1000 })
   description: string;
 
+  @Exclude()
   @DeleteDateColumn({ type: 'timestamp', nullable: true })
   deleted_at: Date;
 }

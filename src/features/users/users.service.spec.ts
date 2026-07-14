@@ -1,13 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Between, ILike, Repository } from 'typeorm';
 import { paginate } from 'nestjs-typeorm-paginate';
+import * as bcrypt from 'bcrypt';
 import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
 
 jest.mock('nestjs-typeorm-paginate', () => ({
   paginate: jest.fn(),
 }));
+jest.mock('bcrypt');
 
 describe('UsersService', () => {
   let usersService: UsersService;
@@ -148,15 +151,47 @@ describe('UsersService', () => {
       });
       expect(result).toEqual(mockUser);
     });
+
+    it('hashes the password before saving when a new one is provided', async () => {
+      userRepository.update!.mockResolvedValue(undefined);
+      userRepository.findOne!.mockResolvedValue(mockUser);
+      jest
+        .mocked(bcrypt.hash)
+        .mockResolvedValue('hashed-new-password' as never);
+
+      await usersService.update(1, { password: 'new-password' });
+
+      expect(bcrypt.hash).toHaveBeenCalledWith('new-password', 10);
+      expect(userRepository.update).toHaveBeenCalledWith(1, {
+        password: 'hashed-new-password',
+      });
+    });
+
+    it('throws NotFoundException when the user does not exist or is already deleted', async () => {
+      userRepository.findOne!.mockResolvedValue(null);
+
+      await expect(
+        usersService.update(1, { description: 'new bio' }),
+      ).rejects.toThrow(NotFoundException);
+      expect(userRepository.update).not.toHaveBeenCalled();
+    });
   });
 
   describe('remove', () => {
     it('soft-deletes the user instead of a hard delete', async () => {
+      userRepository.findOne!.mockResolvedValue(mockUser);
       userRepository.softDelete!.mockResolvedValue(undefined);
 
       await usersService.remove(1);
 
       expect(userRepository.softDelete).toHaveBeenCalledWith(1);
+    });
+
+    it('throws NotFoundException when the user does not exist or is already deleted', async () => {
+      userRepository.findOne!.mockResolvedValue(null);
+
+      await expect(usersService.remove(1)).rejects.toThrow(NotFoundException);
+      expect(userRepository.softDelete).not.toHaveBeenCalled();
     });
   });
 });

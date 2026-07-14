@@ -2,11 +2,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ProfileService } from './profile.service';
+import { UsersService } from '../users/users.service';
 import { User } from '../users/entities/user.entity';
 
 describe('ProfileService', () => {
   let profileService: ProfileService;
   let userRepository: Partial<Record<keyof Repository<User>, jest.Mock>>;
+  let usersService: Partial<Record<keyof UsersService, jest.Mock>>;
 
   const mockUser = {
     id: 1,
@@ -21,11 +23,16 @@ describe('ProfileService', () => {
     userRepository = {
       findOneBy: jest.fn(),
     };
+    usersService = {
+      update: jest.fn(),
+      remove: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProfileService,
         { provide: getRepositoryToken(User), useValue: userRepository },
+        { provide: UsersService, useValue: usersService },
       ],
     }).compile();
 
@@ -54,6 +61,29 @@ describe('ProfileService', () => {
       const result = await profileService.getProfile('ghost');
 
       expect(result).toBeNull();
+    });
+  });
+
+  describe('updateProfile', () => {
+    it('delegates to UsersService.update with the given user id', async () => {
+      usersService.update!.mockResolvedValue(mockUser);
+
+      const result = await profileService.updateProfile(1, {
+        description: 'updated',
+      });
+
+      expect(usersService.update).toHaveBeenCalledWith(1, {
+        description: 'updated',
+      });
+      expect(result).toEqual(mockUser);
+    });
+  });
+
+  describe('removeProfile', () => {
+    it('delegates to UsersService.remove with the given user id', async () => {
+      await profileService.removeProfile(1);
+
+      expect(usersService.remove).toHaveBeenCalledWith(1);
     });
   });
 });

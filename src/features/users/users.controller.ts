@@ -1,18 +1,15 @@
 import {
-  Body,
   Controller,
   DefaultValuePipe,
-  Delete,
   Get,
+  NotFoundException,
   Param,
   ParseIntPipe,
-  Patch,
   Query,
   UseGuards,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { AuthGuard } from '../../auth/auth.guard';
+import { AuthGuard } from '@auth/auth.guard';
 import { Pagination } from 'nestjs-typeorm-paginate';
 import { User } from './entities/user.entity';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
@@ -59,17 +56,13 @@ export class UsersController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.usersService.findOneById(parseInt(id));
-  }
+  async findOne(@Param('id') id: string) {
+    const user = await this.usersService.findOneById(parseInt(id));
 
-  @Patch(':id')
-  update(@Body() updateUserDto: UpdateUserDto, @Param('id') id: string) {
-    return this.usersService.update(parseInt(id), updateUserDto);
-  }
+    if (!user) {
+      throw new NotFoundException();
+    }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.usersService.remove(parseInt(id));
+    return user;
   }
 }
