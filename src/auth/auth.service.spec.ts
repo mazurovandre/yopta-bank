@@ -83,12 +83,12 @@ describe('AuthService', () => {
       });
       expect(jwtService.signAsync).toHaveBeenNthCalledWith(
         1,
-        { sub: mockUser.id, username: mockUser.username },
+        { sub: mockUser.id, username: mockUser.username, type: 'access' },
         { expiresIn: '15m' },
       );
       expect(jwtService.signAsync).toHaveBeenNthCalledWith(
         2,
-        { sub: mockUser.id, username: mockUser.username },
+        { sub: mockUser.id, username: mockUser.username, type: 'refresh' },
         { expiresIn: '7d' },
       );
     });
@@ -141,7 +141,11 @@ describe('AuthService', () => {
     });
 
     it('returns a new token pair for a valid refresh token', async () => {
-      jwtService.verifyAsync.mockResolvedValue({ sub: 1, username: 'john' });
+      jwtService.verifyAsync.mockResolvedValue({
+        sub: 1,
+        username: 'john',
+        type: 'refresh',
+      });
       jwtService.signAsync
         .mockResolvedValueOnce('new-access-token')
         .mockResolvedValueOnce('new-refresh-token');

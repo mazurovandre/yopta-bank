@@ -3,6 +3,7 @@ import {
   IsInt,
   IsNotEmpty,
   IsString,
+  Max,
   MaxLength,
   Min,
   MinLength,
@@ -23,6 +24,7 @@ export class CreateUserDto {
 
   @IsInt()
   @Min(0)
+  @Max(999)
   age: number;
 
   @IsNotEmpty()

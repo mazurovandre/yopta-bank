@@ -8,10 +8,10 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { AuthCredentialsDto } from './dto/auth-credentials.dto';
-import { UsersService } from '../features/users/users.service';
+import { UsersService } from '@features/users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import { JwtPayload } from './jwt-payload.interface';
-import { CreateUserDto } from '../features/users/dto/create-user.dto';
+import { CreateUserDto } from '@features/users/dto/create-user.dto';
 
 @Injectable()
 export class AuthService {
@@ -51,14 +51,15 @@ export class AuthService {
   }
 
   async generateToken(id: number, username: string) {
-    const payload: JwtPayload = { sub: id, username };
     try {
-      const accessToken = await this.jwtService.signAsync(payload, {
-        expiresIn: '15m',
-      });
-      const refreshToken = await this.jwtService.signAsync(payload, {
-        expiresIn: '7d',
-      });
+      const accessToken = await this.jwtService.signAsync(
+        { sub: id, username, type: 'access' },
+        { expiresIn: '15m' },
+      );
+      const refreshToken = await this.jwtService.signAsync(
+        { sub: id, username, type: 'refresh' },
+        { expiresIn: '7d' },
+      );
 
       return {
         access_token: accessToken,
@@ -74,7 +75,7 @@ export class AuthService {
   async refreshToken(token: string) {
     const payload: JwtPayload = await this.jwtService.verifyAsync(token);
 
-    if (!payload) {
+    if (!payload || payload.type !== 'refresh') {
       throw new UnauthorizedException();
     }
 
