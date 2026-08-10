@@ -14,26 +14,21 @@ REST API на NestJS для управления пользователями: �
 
 ## Возможности
 
-- Регистрация и логин с выдачей пары `access_token`/`refresh_token`, обновление токенов по refresh-токену.
-- Получение профиля текущего пользователя (`/profile`) без передачи id — по данным из токена.
+- Регистрация и логин с выдачей пары `access_token`/`refresh_token`, обновление токенов по refresh-токену, logout с отзывом refresh-сессии.
+- Получение профиля текущего пользователя (`/users/me`) без передачи id — по данным из токена.
 - Список пользователей (`/users`) с пагинацией, фильтром по логину/email и диапазону возраста — доступен только авторизованным пользователям.
-- Обновление и мягкое удаление (soft-delete) текущего пользователя через `/profile`.
+- Обновление и мягкое удаление (soft-delete) текущего пользователя, смена пароля через `/users/me` и `/users/refresh-password`.
 - Swagger-документация со схемой авторизации через Bearer-токен.
 
 ## Запуск
 
-1. Скопировать переменные окружения (пример):
+1. Скопировать переменные окружения:
 
-   ```env
-   DATABASE_TYPE=postgres
-   DATABASE_USER=<db-user>
-   DATABASE_PASSWORD=<db-password>
-   DATABASE_PORT=<db-port>
-   DATABASE_HOST=<db-host>
-   DATABASE_NAME=<db-name>
-   JWT_SECRET=<jwt-secret>
-   JWT_EXPIRATION_TIME=<jwt-expiration-seconds>
+   ```bash
+   cp .env.example .env
    ```
+
+   и заполнить значения (см. `.env.example`).
 
 2. Поднять PostgreSQL:
 
@@ -57,9 +52,11 @@ REST API на NestJS для управления пользователями: �
 | POST  | `/auth/signup` | Регистрация пользователя                    | —           |
 | POST  | `/auth/login` | Вход по логину/паролю                       | —           |
 | POST  | `/auth/refresh` | Обновление пары токенов по refresh-токену   | —           |
-| GET   | `/profile`   | Профиль текущего пользователя               | Bearer      |
-| PATCH | `/profile`   | Обновление текущего пользователя            | Bearer      |
-| DELETE| `/profile`   | Мягкое удаление текущего пользователя        | Bearer      |
+| POST  | `/auth/logout` | Отзыв refresh-сессии                        | —           |
+| GET   | `/users/me`  | Профиль текущего пользователя               | Bearer      |
+| PATCH | `/users/me`  | Обновление текущего пользователя            | Bearer      |
+| DELETE| `/users/me`  | Мягкое удаление текущего пользователя        | Bearer      |
+| PATCH | `/users/refresh-password` | Смена пароля текущего пользователя | Bearer      |
 | GET   | `/users`     | Список пользователей (пагинация, поиск)     | Bearer      |
 | GET   | `/users/:id` | Пользователь по id                          | Bearer      |
 

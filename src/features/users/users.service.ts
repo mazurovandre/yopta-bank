@@ -46,7 +46,7 @@ export class UsersService {
     const { currentPassword, newPassword } = refreshPasswordDto;
     const isMatch = await bcrypt.compare(currentPassword, user.password);
 
-    if (isMatch) {
+    if (!isMatch) {
       throw new NotFoundException('Wrong password');
     }
 
