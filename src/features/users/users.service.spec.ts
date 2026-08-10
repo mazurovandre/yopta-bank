@@ -1,20 +1,22 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { Between, ILike, Repository } from 'typeorm';
-import { paginate } from 'nestjs-typeorm-paginate';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
+import { CreateUserDto } from './dto/create-user.dto';
+import { FindUsersQueryDto } from './dto/find-users-query.dto';
+import { RefreshPasswordDto } from './dto/refresh-password.dto';
+import {
+  IUsersRepository,
+  USERS_REPOSITORY,
+} from './repositories/users-repository.interface';
+import { Paginated } from '@common/types/paginated.type';
 
-jest.mock('nestjs-typeorm-paginate', () => ({
-  paginate: jest.fn(),
-}));
 jest.mock('bcrypt');
 
 describe('UsersService', () => {
   let usersService: UsersService;
-  let userRepository: Partial<Record<keyof Repository<User>, jest.Mock>>;
+  let usersRepository: jest.Mocked<IUsersRepository>;
 
   const mockUser = {
     id: 1,
@@ -26,10 +28,12 @@ describe('UsersService', () => {
   } as User;
 
   beforeEach(async () => {
-    userRepository = {
+    usersRepository = {
       create: jest.fn(),
-      save: jest.fn(),
-      findOne: jest.fn(),
+      findByUsername: jest.fn(),
+      findById: jest.fn(),
+      findAll: jest.fn(),
+      updatePassword: jest.fn(),
       update: jest.fn(),
       softDelete: jest.fn(),
     };
@@ -37,7 +41,7 @@ describe('UsersService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsersService,
-        { provide: getRepositoryToken(User), useValue: userRepository },
+        { provide: USERS_REPOSITORY, useValue: usersRepository },
       ],
     }).compile();
 
@@ -49,149 +53,146 @@ describe('UsersService', () => {
   });
 
   describe('create', () => {
-    it('creates and saves a new user', async () => {
-      const createUserDto = {
+    it('delegates creation to the repository', async () => {
+      const createUserDto: CreateUserDto = {
         username: 'john',
-        password: 'secret',
+        password: 'secret123',
         email: 'john@example.com',
         age: 25,
         description: 'about me',
       };
-      userRepository.create!.mockReturnValue(mockUser);
-      userRepository.save!.mockResolvedValue(mockUser);
+      usersRepository.create.mockResolvedValue(mockUser);
 
       const result = await usersService.create(createUserDto);
 
-      expect(userRepository.create).toHaveBeenCalledWith(createUserDto);
-      expect(userRepository.save).toHaveBeenCalledWith(mockUser);
+      expect(usersRepository.create).toHaveBeenCalledWith(createUserDto);
       expect(result).toEqual(mockUser);
     });
   });
 
   describe('findOneByUsername', () => {
     it('looks the user up by username', async () => {
-      userRepository.findOne!.mockResolvedValue(mockUser);
+      usersRepository.findByUsername.mockResolvedValue(mockUser);
 
       const result = await usersService.findOneByUsername('john');
 
-      expect(userRepository.findOne).toHaveBeenCalledWith({
-        where: { username: 'john' },
-      });
+      expect(usersRepository.findByUsername).toHaveBeenCalledWith('john');
       expect(result).toEqual(mockUser);
     });
   });
 
   describe('findOneById', () => {
     it('looks the user up by id', async () => {
-      userRepository.findOne!.mockResolvedValue(mockUser);
+      usersRepository.findById.mockResolvedValue(mockUser);
 
       const result = await usersService.findOneById(1);
 
-      expect(userRepository.findOne).toHaveBeenCalledWith({
-        where: { id: 1 },
-      });
+      expect(usersRepository.findById).toHaveBeenCalledWith(1);
       expect(result).toEqual(mockUser);
     });
   });
 
   describe('findAll', () => {
-    it('paginates with just the age range when no search terms are given', async () => {
-      jest.mocked(paginate).mockResolvedValue('paginated-result' as never);
+    it('delegates pagination to the repository', async () => {
+      const query: FindUsersQueryDto = {
+        page: 1,
+        limit: 10,
+        ageFrom: 0,
+        ageTo: 999,
+      };
+      const paginated: Paginated<User> = {
+        items: [mockUser],
+        total: 1,
+        page: 1,
+        limit: 10,
+      };
+      usersRepository.findAll.mockResolvedValue(paginated);
 
-      const result = await usersService.findAll({ page: 1, limit: 10 }, 0, 999);
+      const result = await usersService.findAll(query);
 
-      expect(paginate).toHaveBeenCalledWith(
-        userRepository,
-        { page: 1, limit: 10 },
-        { where: { age: Between(0, 999) } },
-      );
-      expect(result).toBe('paginated-result');
+      expect(usersRepository.findAll).toHaveBeenCalledWith(query);
+      expect(result).toEqual(paginated);
+    });
+  });
+
+  describe('refreshPassword', () => {
+    const refreshPasswordDto: RefreshPasswordDto = {
+      currentPassword: 'oldpassword',
+      newPassword: 'newpassword',
+    };
+
+    it('throws NotFoundException when the user does not exist', async () => {
+      usersRepository.findById.mockResolvedValue(null);
+
+      await expect(
+        usersService.refreshPassword(1, refreshPasswordDto),
+      ).rejects.toThrow(NotFoundException);
+      expect(usersRepository.updatePassword).not.toHaveBeenCalled();
     });
 
-    it('adds a username filter with ILike when username is provided', async () => {
-      jest.mocked(paginate).mockResolvedValue('paginated-result' as never);
+    it('throws NotFoundException when the current password does not match', async () => {
+      usersRepository.findById.mockResolvedValue(mockUser);
+      jest.mocked(bcrypt.compare).mockResolvedValue(false as never);
 
-      await usersService.findAll({ page: 1, limit: 10 }, 0, 999, 'jo');
-
-      expect(paginate).toHaveBeenCalledWith(
-        userRepository,
-        { page: 1, limit: 10 },
-        { where: { age: Between(0, 999), username: ILike('%jo%') } },
-      );
+      await expect(
+        usersService.refreshPassword(1, refreshPasswordDto),
+      ).rejects.toThrow(NotFoundException);
+      expect(usersRepository.updatePassword).not.toHaveBeenCalled();
     });
 
-    it('adds an email filter with ILike when email is provided', async () => {
-      jest.mocked(paginate).mockResolvedValue('paginated-result' as never);
+    it('hashes and saves the new password when the current password matches', async () => {
+      const updatedUser = { ...mockUser, password: 'new-hash' } as User;
+      usersRepository.findById
+        .mockResolvedValueOnce(mockUser)
+        .mockResolvedValueOnce(updatedUser);
+      jest.mocked(bcrypt.compare).mockResolvedValue(true as never);
+      jest.mocked(bcrypt.hash).mockResolvedValue('new-hash' as never);
 
-      await usersService.findAll(
-        { page: 1, limit: 10 },
-        0,
-        999,
-        undefined,
-        'john@',
-      );
+      const result = await usersService.refreshPassword(1, refreshPasswordDto);
 
-      expect(paginate).toHaveBeenCalledWith(
-        userRepository,
-        { page: 1, limit: 10 },
-        { where: { age: Between(0, 999), email: ILike('%john@%') } },
-      );
+      expect(bcrypt.hash).toHaveBeenCalledWith('newpassword', 12);
+      expect(usersRepository.updatePassword).toHaveBeenCalledWith(1, 'new-hash');
+      expect(result).toEqual(updatedUser);
     });
   });
 
   describe('update', () => {
     it('updates the user and returns the fresh record', async () => {
-      userRepository.update!.mockResolvedValue(undefined);
-      userRepository.findOne!.mockResolvedValue(mockUser);
+      usersRepository.findById.mockResolvedValue(mockUser);
+      usersRepository.update.mockResolvedValue(undefined);
 
       const result = await usersService.update(1, { description: 'new bio' });
 
-      expect(userRepository.update).toHaveBeenCalledWith(1, {
+      expect(usersRepository.update).toHaveBeenCalledWith(1, {
         description: 'new bio',
       });
       expect(result).toEqual(mockUser);
     });
 
-    it('hashes the password before saving when a new one is provided', async () => {
-      userRepository.update!.mockResolvedValue(undefined);
-      userRepository.findOne!.mockResolvedValue(mockUser);
-      jest
-        .mocked(bcrypt.hash)
-        .mockResolvedValue('hashed-new-password' as never);
-
-      await usersService.update(1, { password: 'new-password' });
-
-      expect(bcrypt.hash).toHaveBeenCalledWith('new-password', 10);
-      expect(userRepository.update).toHaveBeenCalledWith(1, {
-        password: 'hashed-new-password',
-      });
-    });
-
-    it('throws NotFoundException when the user does not exist or is already deleted', async () => {
-      userRepository.findOne!.mockResolvedValue(null);
+    it('throws NotFoundException when the user does not exist', async () => {
+      usersRepository.findById.mockResolvedValue(null);
 
       await expect(
         usersService.update(1, { description: 'new bio' }),
       ).rejects.toThrow(NotFoundException);
-      expect(userRepository.update).not.toHaveBeenCalled();
+      expect(usersRepository.update).not.toHaveBeenCalled();
     });
   });
 
   describe('remove', () => {
     it('soft-deletes the user instead of a hard delete', async () => {
-      userRepository.findOne!.mockResolvedValue(mockUser);
-      userRepository.softDelete!.mockResolvedValue(undefined);
+      usersRepository.findById.mockResolvedValue(mockUser);
 
       await usersService.remove(1);
 
-      expect(userRepository.softDelete).toHaveBeenCalledWith(1);
+      expect(usersRepository.softDelete).toHaveBeenCalledWith(1);
     });
 
-    it('throws NotFoundException when the user does not exist or is already deleted', async () => {
-      userRepository.findOne!.mockResolvedValue(null);
+    it('throws NotFoundException when the user does not exist', async () => {
+      usersRepository.findById.mockResolvedValue(null);
 
       await expect(usersService.remove(1)).rejects.toThrow(NotFoundException);
-      expect(userRepository.softDelete).not.toHaveBeenCalled();
+      expect(usersRepository.softDelete).not.toHaveBeenCalled();
     });
   });
 });
