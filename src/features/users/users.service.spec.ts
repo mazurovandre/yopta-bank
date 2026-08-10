@@ -151,7 +151,10 @@ describe('UsersService', () => {
       const result = await usersService.refreshPassword(1, refreshPasswordDto);
 
       expect(bcrypt.hash).toHaveBeenCalledWith('newpassword', 12);
-      expect(usersRepository.updatePassword).toHaveBeenCalledWith(1, 'new-hash');
+      expect(usersRepository.updatePassword).toHaveBeenCalledWith(
+        1,
+        'new-hash',
+      );
       expect(result).toEqual(updatedUser);
     });
   });
