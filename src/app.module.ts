@@ -4,7 +4,6 @@ import { UsersModule } from './features/users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { databaseConfig } from './configs/database.config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ProfileModule } from './features/profile/profile.module';
 
 @Module({
   imports: [
@@ -27,7 +26,6 @@ import { ProfileModule } from './features/profile/profile.module';
     }),
     UsersModule,
     AuthModule,
-    ProfileModule,
   ],
   controllers: [],
   providers: [],

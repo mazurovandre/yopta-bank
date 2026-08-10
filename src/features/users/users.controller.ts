@@ -1,18 +1,24 @@
 import {
+  Body,
   Controller,
-  DefaultValuePipe,
+  Delete,
   Get,
   NotFoundException,
   Param,
-  ParseIntPipe,
+  Patch,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { AuthGuard } from '@auth/auth.guard';
-import { Pagination } from 'nestjs-typeorm-paginate';
 import { User } from './entities/user.entity';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { Request } from 'express';
+import { UpdateUserDto } from '@features/users/dto/update-user.dto';
+import { FindUsersQueryDto } from './dto/find-users-query.dto';
+import { RefreshPasswordDto } from '@features/users/dto/refresh-password.dto';
+import { Paginated } from '@common/types/paginated.type';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -36,23 +42,44 @@ export class UsersController {
     default: 10,
     description: 'Количество элементов',
   })
-  findAll(
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number = 1,
-    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number = 10,
-    @Query('ageFrom', new DefaultValuePipe(0), ParseIntPipe)
-    ageFrom: number = 0,
-    @Query('ageTo', new DefaultValuePipe(999), ParseIntPipe)
-    ageTo: number = 999,
-    @Query('username') username?: string,
-    @Query('email') email?: string,
-  ): Promise<Pagination<User>> {
-    return this.usersService.findAll(
-      { page, limit },
-      ageFrom,
-      ageTo,
-      username,
-      email,
-    );
+  findAll(@Query() query: FindUsersQueryDto): Promise<Paginated<User>> {
+    return this.usersService.findAll(query);
+  }
+
+  @Get('/me')
+  async findMyself(@Req() request: Request) {
+    const username = request['user']['username'];
+    const user = await this.usersService.findOneByUsername(username);
+
+    if (!user) {
+      throw new NotFoundException();
+    }
+
+    return user;
+  }
+
+  @Patch('/me')
+  updateMyself(@Req() request: Request, @Body() updateUserDto: UpdateUserDto) {
+    const userId = request['user']['sub'];
+
+    return this.usersService.update(userId, updateUserDto);
+  }
+
+  @Delete('/me')
+  removeMyself(@Req() request: Request) {
+    const userId = request['user']['sub'];
+
+    return this.usersService.remove(userId);
+  }
+
+  @Patch('/refresh-password')
+  refreshPassword(
+    @Req() request: Request,
+    @Body() refreshPasswordDto: RefreshPasswordDto,
+  ) {
+    const userId = request['user']['sub'];
+
+    return this.usersService.refreshPassword(userId, refreshPasswordDto);
   }
 
   @Get(':id')

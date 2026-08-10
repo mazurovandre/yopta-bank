@@ -12,20 +12,20 @@ export class User extends BaseEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'varchar', unique: true })
+  @Column({ type: 'varchar', length: 50, unique: true, nullable: false })
   username: string;
 
   @Exclude()
-  @Column({ type: 'varchar' })
+  @Column({ type: 'varchar', length: 1000 })
   password: string;
 
-  @Column({ type: 'varchar' })
+  @Column({ type: 'varchar', length: 100 })
   email: string;
 
   @Column({ type: 'int' })
   age: number;
 
-  @Column({ type: 'varchar', length: 1000 })
+  @Column({ type: 'varchar', length: 1000, nullable: true })
   description: string;
 
   @Exclude()

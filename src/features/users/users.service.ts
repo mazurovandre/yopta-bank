@@ -1,60 +1,60 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Between, FindOptionsWhere, ILike, Repository } from 'typeorm';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { FindUsersQueryDto } from './dto/find-users-query.dto';
+import { RefreshPasswordDto } from '@features/users/dto/refresh-password.dto';
 import {
-  IPaginationOptions,
-  paginate,
-  Pagination,
-} from 'nestjs-typeorm-paginate';
+  IUsersRepository,
+  USERS_REPOSITORY,
+} from '@features/users/repositories/users-repository.interface';
+import { Paginated } from '@common/types/paginated.type';
 
 @Injectable()
 export class UsersService {
   constructor(
-    @InjectRepository(User) private readonly userRepository: Repository<User>,
+    @Inject(USERS_REPOSITORY) private readonly userRepository: IUsersRepository,
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
-    const user = this.userRepository.create(createUserDto);
-
-    return this.userRepository.save(user);
+    return this.userRepository.create(createUserDto);
   }
 
   async findOneByUsername(username: string): Promise<User | null> {
-    return this.userRepository.findOne({
-      where: { username: username },
-    });
+    return this.userRepository.findByUsername(username);
   }
 
   async findOneById(userId: number): Promise<User | null> {
-    return this.userRepository.findOne({
-      where: { id: userId },
-    });
+    return this.userRepository.findById(userId);
   }
 
-  async findAll(
-    options: IPaginationOptions,
-    ageFrom: number,
-    ageTo: number,
-    username?: string,
-    email?: string,
-  ): Promise<Pagination<User>> {
-    const where: FindOptionsWhere<User> = {
-      age: Between(ageFrom, ageTo),
-    };
+  async findAll(query: FindUsersQueryDto): Promise<Paginated<User>> {
+    return this.userRepository.findAll(query);
+  }
 
-    if (username) {
-      where.username = ILike(`%${username}%`);
+  async refreshPassword(
+    userId: number,
+    refreshPasswordDto: RefreshPasswordDto,
+  ): Promise<User | null> {
+    const user = await this.findOneById(userId);
+
+    if (!user) {
+      throw new NotFoundException();
     }
 
-    if (email) {
-      where.email = ILike(`%${email}%`);
+    const { currentPassword, newPassword } = refreshPasswordDto;
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+
+    if (isMatch) {
+      throw new NotFoundException('Wrong password');
     }
 
-    return paginate<User>(this.userRepository, options, { where });
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+
+    await this.userRepository.updatePassword(userId, passwordHash);
+
+    return this.findOneById(userId);
   }
 
   async update(
@@ -65,10 +65,6 @@ export class UsersService {
 
     if (!user) {
       throw new NotFoundException();
-    }
-
-    if (updateUserDto.password) {
-      updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
     }
 
     await this.userRepository.update(userId, updateUserDto);
