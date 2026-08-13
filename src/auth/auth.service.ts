@@ -61,10 +61,12 @@ export class AuthService {
   }
 
   async generateToken(id: number, username: string) {
-    const accessTTL =
-      this.configService.get<number>('JWT_ACCESS_EXPIRATION_TIME') ?? 54000;
-    const refreshTTL =
-      this.configService.get<number>('JWT_REFRESH_EXPIRATION_TIME') ?? 5184000;
+    const accessTTL = Number(
+      this.configService.get<number>('JWT_ACCESS_EXPIRATION_TIME') ?? 54000,
+    );
+    const refreshTTL = Number(
+      this.configService.get<number>('JWT_REFRESH_EXPIRATION_TIME') ?? 5184000,
+    );
     const accessToken = await this.jwtService.signAsync(
       { sub: id, username, type: 'access' },
       { expiresIn: accessTTL },

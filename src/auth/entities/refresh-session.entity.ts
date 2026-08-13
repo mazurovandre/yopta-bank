@@ -24,6 +24,7 @@ export class RefreshSession extends BaseEntity {
   @IsHash('sha256')
   refresh_token: string;
 
+  @Column({ nullable: true })
   @IsUUID()
   @Index()
   family_id: string;
