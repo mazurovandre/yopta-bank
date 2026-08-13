@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { UsersModule } from './features/users/users.module';
-import { AuthModule } from './auth/auth.module';
-import { databaseConfig } from './configs/database.config';
+import { UsersModule } from '@features/users/users.module';
+import { AuthModule } from '@auth/auth.module';
+import { databaseConfig } from '@configs/database.config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AvatarsModule } from '@features/avatars/avatars.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     }),
     UsersModule,
     AuthModule,
+    AvatarsModule,
   ],
   controllers: [],
   providers: [],
