@@ -19,6 +19,7 @@ import { UpdateUserDto } from '@features/users/dto/update-user.dto';
 import { FindUsersQueryDto } from './dto/find-users-query.dto';
 import { RefreshPasswordDto } from '@features/users/dto/refresh-password.dto';
 import { Paginated } from '@common/types/paginated.type';
+import { FindMostActiveQueryDto } from '@features/users/dto/find-most-active-query.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -44,6 +45,34 @@ export class UsersController {
   })
   findAll(@Query() query: FindUsersQueryDto): Promise<Paginated<User>> {
     return this.usersService.findAll(query);
+  }
+
+  @Get('/most-active')
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    default: 1,
+    description: 'Номер страницы пагинации',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    default: 10,
+    description: 'Количество элементов',
+  })
+  @ApiQuery({
+    name: 'minAvatars',
+    required: false,
+    type: Number,
+    default: 2,
+    description: 'Минимальное количество аватарок',
+  })
+  findMostActive(
+    @Query() query: FindMostActiveQueryDto,
+  ): Promise<Paginated<User>> {
+    return this.usersService.findMostActive(query);
   }
 
   @Get('/me')

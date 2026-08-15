@@ -5,6 +5,7 @@ import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { FindUsersQueryDto } from './dto/find-users-query.dto';
+import { FindMostActiveQueryDto } from './dto/find-most-active-query.dto';
 import { RefreshPasswordDto } from './dto/refresh-password.dto';
 import {
   IUsersRepository,
@@ -33,6 +34,7 @@ describe('UsersService', () => {
       findByUsername: jest.fn(),
       findById: jest.fn(),
       findAll: jest.fn(),
+      findMostActive: jest.fn(),
       updatePassword: jest.fn(),
       update: jest.fn(),
       softDelete: jest.fn(),
@@ -111,6 +113,30 @@ describe('UsersService', () => {
       const result = await usersService.findAll(query);
 
       expect(usersRepository.findAll).toHaveBeenCalledWith(query);
+      expect(result).toEqual(paginated);
+    });
+  });
+
+  describe('findMostActive', () => {
+    it('delegates the most active lookup to the repository', async () => {
+      const query: FindMostActiveQueryDto = {
+        page: 1,
+        limit: 10,
+        ageFrom: 0,
+        ageTo: 999,
+        minAvatars: 2,
+      };
+      const paginated: Paginated<User> = {
+        items: [{ ...mockUser, avatarsCount: 3 } as User],
+        total: 1,
+        page: 1,
+        limit: 10,
+      };
+      usersRepository.findMostActive.mockResolvedValue(paginated);
+
+      const result = await usersService.findMostActive(query);
+
+      expect(usersRepository.findMostActive).toHaveBeenCalledWith(query);
       expect(result).toEqual(paginated);
     });
   });

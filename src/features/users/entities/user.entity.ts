@@ -3,9 +3,11 @@ import {
   Column,
   DeleteDateColumn,
   Entity,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
+import { Avatar } from '@features/avatars/entities/avatar.entity';
 
 @Entity()
 export class User extends BaseEntity {
@@ -27,6 +29,11 @@ export class User extends BaseEntity {
 
   @Column({ type: 'varchar', length: 1000, nullable: true })
   description: string;
+
+  @OneToMany(() => Avatar, (avatar) => avatar.user)
+  avatars: Avatar[];
+
+  avatarsCount?: number;
 
   @Exclude()
   @DeleteDateColumn({ type: 'timestamp', nullable: true })

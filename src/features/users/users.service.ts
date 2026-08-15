@@ -10,6 +10,7 @@ import {
   USERS_REPOSITORY,
 } from '@features/users/repositories/users-repository.interface';
 import { Paginated } from '@common/types/paginated.type';
+import { FindMostActiveQueryDto } from '@features/users/dto/find-most-active-query.dto';
 
 @Injectable()
 export class UsersService {
@@ -31,6 +32,12 @@ export class UsersService {
 
   async findAll(query: FindUsersQueryDto): Promise<Paginated<User>> {
     return this.userRepository.findAll(query);
+  }
+
+  async findMostActive(
+    query: FindMostActiveQueryDto,
+  ): Promise<Paginated<User>> {
+    return this.userRepository.findMostActive(query);
   }
 
   async refreshPassword(

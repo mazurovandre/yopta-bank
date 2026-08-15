@@ -5,6 +5,7 @@ import {
   DeleteDateColumn,
   Entity,
   Index,
+  JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
@@ -16,9 +17,12 @@ export class Avatar extends BaseEntity {
   id: number;
 
   @Column()
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @Index()
   user_id: number;
+
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'user_id' })
+  user: User;
 
   @Column({ type: 'varchar', length: 255 })
   filename: string;
@@ -27,5 +31,5 @@ export class Avatar extends BaseEntity {
   created_at: Date;
 
   @DeleteDateColumn({ type: 'timestamptz', nullable: true })
-  updated_at: Date;
+  deleted_at: Date;
 }
