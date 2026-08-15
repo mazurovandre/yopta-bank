@@ -1,5 +1,6 @@
 import {
   Body,
+  ClassSerializerInterceptor,
   Controller,
   Delete,
   Get,
@@ -9,6 +10,7 @@ import {
   Query,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { AuthGuard } from '@auth/auth.guard';
@@ -20,6 +22,7 @@ import { FindUsersQueryDto } from './dto/find-users-query.dto';
 import { RefreshPasswordDto } from '@features/users/dto/refresh-password.dto';
 import { Paginated } from '@common/types/paginated.type';
 import { FindMostActiveQueryDto } from '@features/users/dto/find-most-active-query.dto';
+import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -29,6 +32,8 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
+  @UseInterceptors(CacheInterceptor, ClassSerializerInterceptor)
+  @CacheTTL(30000)
   @ApiQuery({
     name: 'page',
     required: false,
@@ -112,6 +117,8 @@ export class UsersController {
   }
 
   @Get(':id')
+  @UseInterceptors(CacheInterceptor, ClassSerializerInterceptor)
+  @CacheTTL(30000)
   async findOne(@Param('id') id: string) {
     const user = await this.usersService.findOneById(parseInt(id));
 
