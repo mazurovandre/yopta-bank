@@ -3,6 +3,7 @@ import * as bcrypt from 'bcrypt';
 import {
   ConflictException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { AuthCredentialsDto } from './dto/auth-credentials.dto';
@@ -18,6 +19,8 @@ import { createHash } from 'node:crypto';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
@@ -30,14 +33,18 @@ export class AuthService {
     const user = await this.usersService.findOneByUsername(username);
 
     if (!user) {
+      this.logger.warn(`Login failed: user "${username}" not found`);
       throw new UnauthorizedException();
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
+      this.logger.warn(`Login failed: wrong password for user "${username}"`);
       throw new UnauthorizedException();
     }
+
+    this.logger.log(`Login successful for user id=${user.id}`);
 
     return this.generateToken(user.id, username);
   }
@@ -47,6 +54,7 @@ export class AuthService {
     const user = await this.usersService.findOneByUsername(username);
 
     if (user) {
+      this.logger.warn(`Sign up failed: username "${username}" already taken`);
       throw new ConflictException('User already exists');
     }
 
@@ -56,6 +64,8 @@ export class AuthService {
       ...data,
       password: newPassword,
     });
+
+    this.logger.log(`Sign up successful: user "${newUser}" id=${id} created`);
 
     return this.generateToken(id, newUser);
   }
@@ -108,10 +118,14 @@ export class AuthService {
     try {
       payload = await this.jwtService.verifyAsync(token);
     } catch (error) {
+      this.logger.warn('Refresh failed: token is invalid or expired');
       throw new UnauthorizedException(error);
     }
 
     if (payload.type !== 'refresh') {
+      this.logger.warn(
+        `Refresh failed: wrong token type "${payload.type}" for user id=${payload.sub}`,
+      );
       throw new UnauthorizedException();
     }
 
@@ -121,9 +135,28 @@ export class AuthService {
       refresh_token: tokenHash,
     });
 
-    if (!session || session.revoked_at || session.expires_at < new Date()) {
+    if (!session) {
+      this.logger.warn(
+        `Refresh failed: session not found for user id=${payload.sub}`,
+      );
       throw new UnauthorizedException();
     }
+
+    if (session.revoked_at) {
+      this.logger.error(
+        `Refresh rejected: revoked token reused for user id=${payload.sub}`,
+      );
+      throw new UnauthorizedException();
+    }
+
+    if (session.expires_at < new Date()) {
+      this.logger.warn(
+        `Refresh failed: session expired for user id=${payload.sub}`,
+      );
+      throw new UnauthorizedException();
+    }
+
+    this.logger.log(`Refresh successful for user id=${payload.sub}`);
 
     return this.generateToken(payload.sub, payload.username);
   }
@@ -138,5 +171,7 @@ export class AuthService {
       },
       { revoked_at: new Date() },
     );
+
+    this.logger.log('Logout: refresh session revoked');
   }
 }

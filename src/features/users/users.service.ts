@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
@@ -22,6 +23,8 @@ import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     @Inject(USERS_REPOSITORY) private readonly userRepository: IUsersRepository,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
@@ -58,30 +61,47 @@ export class UsersService {
     const { amount, recipientId } = sendMoneyDto;
 
     if (userId === recipientId) {
+      this.logger.warn(`Transfer rejected: user id=${userId} sends to himself`);
       throw new BadRequestException('Not allowed to send money to yourself');
     }
 
     if (!sender) {
+      this.logger.warn(`Transfer rejected: sender id=${userId} not found`);
       throw new NotFoundException('Sender not found');
     }
 
     if (sender?.balance < amount) {
+      this.logger.warn(
+        `Transfer rejected: sender id=${userId} has not enough money (balance=${sender.balance}, amount=${amount})`,
+      );
       throw new BadRequestException('Not enough money');
     }
 
     const recipient = await this.findOneById(recipientId);
 
     if (!recipient) {
+      this.logger.warn(
+        `Transfer rejected: recipient id=${recipientId} not found`,
+      );
       throw new NotFoundException();
     }
 
     const isDebited = await this.userRepository.debit(userId, amount);
 
     if (!isDebited) {
+      // Списание не прошло по атомарному условию в SQL — значит, баланс
+      // изменился между проверкой выше и самим debit (гонка).
+      this.logger.warn(
+        `Transfer rejected: debit of ${amount} from user id=${userId} failed`,
+      );
       throw new BadRequestException('Not enough money');
     }
 
     await this.userRepository.credit(recipientId, amount);
+
+    this.logger.log(
+      `Transfer done: ${amount} from user id=${userId} to user id=${recipientId}`,
+    );
 
     runOnTransactionCommit(() => {
       void this.cacheManager.mdel([
@@ -98,6 +118,7 @@ export class UsersService {
     const user = await this.findOneById(userId);
 
     if (!user) {
+      this.logger.warn(`Password change failed: user id=${userId} not found`);
       throw new NotFoundException();
     }
 
@@ -105,12 +126,17 @@ export class UsersService {
     const isMatch = await bcrypt.compare(currentPassword, user.password);
 
     if (!isMatch) {
+      this.logger.warn(
+        `Password change failed: wrong current password for user id=${userId}`,
+      );
       throw new NotFoundException('Wrong password');
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 12);
 
     await this.userRepository.updatePassword(userId, passwordHash);
+
+    this.logger.log(`Password changed for user id=${userId}`);
 
     return this.findOneById(userId);
   }
@@ -138,9 +164,15 @@ export class UsersService {
     }
 
     await this.userRepository.softDelete(id);
+
+    this.logger.log(`User id=${id} removed`);
   }
 
   async resetAllBalances(): Promise<number> {
-    return await this.userRepository.resetAllBalances();
+    const affected = await this.userRepository.resetAllBalances();
+
+    this.logger.log(`Balances reset for ${affected} user(s)`);
+
+    return affected;
   }
 }
