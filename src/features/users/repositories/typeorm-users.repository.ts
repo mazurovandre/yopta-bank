@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, FindOptionsWhere, ILike, Repository } from 'typeorm';
+import {
+  Between,
+  FindOptionsWhere,
+  ILike,
+  MoreThanOrEqual,
+  Repository,
+} from 'typeorm';
 import { paginate } from 'nestjs-typeorm-paginate';
 import { User } from '@features/users/entities/user.entity';
 import { CreateUserDto } from '@features/users/dto/create-user.dto';
@@ -108,6 +114,23 @@ export class TypeOrmUsersRepository implements IUsersRepository {
     return { items, total, limit, page };
   }
 
+  async debit(id: number, amount: number): Promise<boolean> {
+    const result = await this.repo.decrement(
+      {
+        id,
+        balance: MoreThanOrEqual(amount),
+      },
+      'balance',
+      amount,
+    );
+
+    return result.affected === 1;
+  }
+
+  async credit(id: number, amount: number): Promise<void> {
+    await this.repo.increment({ id }, 'balance', amount);
+  }
+
   async updatePassword(id: number, passwordHash: string): Promise<void> {
     await this.repo.update(id, { password: passwordHash });
   }
@@ -118,5 +141,16 @@ export class TypeOrmUsersRepository implements IUsersRepository {
 
   async softDelete(id: number): Promise<void> {
     await this.repo.softDelete(id);
+  }
+
+  async resetAllBalances(): Promise<number> {
+    const result = await this.repo
+      .createQueryBuilder()
+      .update(User)
+      .set({ balance: 0 })
+      .where('balance <> 0')
+      .execute();
+
+    return result.affected ?? 0;
   }
 }

@@ -15,5 +15,8 @@ export interface IUsersRepository {
   findMostActive(query: FindMostActiveQueryDto): Promise<Paginated<User>>;
   updatePassword(id: number, passwordHash: string): Promise<void>;
   update(id: number, data: UpdateUserDto): Promise<void>;
+  debit(id: number, amount: number): Promise<boolean>;
+  credit(id: number, amount: number): Promise<void>;
   softDelete(id: number): Promise<void>;
+  resetAllBalances(): Promise<number>;
 }

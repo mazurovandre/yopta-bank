@@ -7,6 +7,7 @@ import {
   NotFoundException,
   Param,
   Patch,
+  Post,
   Query,
   Req,
   UseGuards,
@@ -23,6 +24,7 @@ import { RefreshPasswordDto } from '@features/users/dto/refresh-password.dto';
 import { Paginated } from '@common/types/paginated.type';
 import { FindMostActiveQueryDto } from '@features/users/dto/find-most-active-query.dto';
 import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
+import { TransferBalanceDto } from './dto/transfer-balance.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -114,6 +116,16 @@ export class UsersController {
     const userId = request['user']['sub'];
 
     return this.usersService.refreshPassword(userId, refreshPasswordDto);
+  }
+
+  @Post('/transfer-balance')
+  async transferBalance(
+    @Req() request: Request,
+    @Body() transferBalanceDto: TransferBalanceDto,
+  ) {
+    const userId = request['user']['sub'];
+
+    return this.usersService.transferBalance(userId, transferBalanceDto);
   }
 
   @Get(':id')

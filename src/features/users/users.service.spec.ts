@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
@@ -12,12 +12,19 @@ import {
   USERS_REPOSITORY,
 } from './repositories/users-repository.interface';
 import { Paginated } from '@common/types/paginated.type';
+import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
+import { TransferBalanceDto } from '@features/users/dto/transfer-balance.dto';
 
 jest.mock('bcrypt');
+jest.mock('typeorm-transactional', () => ({
+  Transactional: () => () => undefined,
+  runOnTransactionCommit: (cb: () => void) => cb(),
+}));
 
 describe('UsersService', () => {
   let usersService: UsersService;
   let usersRepository: jest.Mocked<IUsersRepository>;
+  let cacheManager: jest.Mocked<Pick<Cache, 'mdel'>>;
 
   const mockUser = {
     id: 1,
@@ -29,6 +36,7 @@ describe('UsersService', () => {
   } as User;
 
   beforeEach(async () => {
+    cacheManager = { mdel: jest.fn() };
     usersRepository = {
       create: jest.fn(),
       findByUsername: jest.fn(),
@@ -37,13 +45,17 @@ describe('UsersService', () => {
       findMostActive: jest.fn(),
       updatePassword: jest.fn(),
       update: jest.fn(),
+      debit: jest.fn(),
+      credit: jest.fn(),
       softDelete: jest.fn(),
+      resetAllBalances: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsersService,
         { provide: USERS_REPOSITORY, useValue: usersRepository },
+        { provide: CACHE_MANAGER, useValue: cacheManager },
       ],
     }).compile();
 
@@ -222,6 +234,78 @@ describe('UsersService', () => {
 
       await expect(usersService.remove(1)).rejects.toThrow(NotFoundException);
       expect(usersRepository.softDelete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('transferBalance', () => {
+    const transferBalanceDto: TransferBalanceDto = {
+      recipientId: 2,
+      amount: 50.51,
+    };
+    const sender = { ...mockUser, id: 1, balance: 100 } as User;
+    const recipient = { ...mockUser, id: 2, balance: 0 } as User;
+
+    it('rejects a transfer to yourself', async () => {
+      await expect(
+        usersService.transferBalance(1, { recipientId: 1, amount: 50 }),
+      ).rejects.toThrow(BadRequestException);
+      expect(usersRepository.debit).not.toHaveBeenCalled();
+    });
+
+    it('throws error when the sender is not exists', async () => {
+      usersRepository.findById.mockResolvedValue(null);
+
+      await expect(
+        usersService.transferBalance(sender.id, transferBalanceDto),
+      ).rejects.toThrow(NotFoundException);
+      expect(usersRepository.debit).not.toHaveBeenCalled();
+    });
+
+    it('ejects when the sender does not have enough money', async () => {
+      usersRepository.findById.mockResolvedValue({
+        ...sender,
+        balance: 10,
+      } as User);
+
+      await expect(
+        usersService.transferBalance(recipient.id, transferBalanceDto),
+      ).rejects.toThrow(BadRequestException);
+      expect(usersRepository.debit).not.toHaveBeenCalled();
+    });
+
+    it('throw error when recipient does not exist', async () => {
+      usersRepository.findById.mockResolvedValueOnce(sender);
+      usersRepository.findById.mockResolvedValueOnce(null);
+
+      await expect(
+        usersService.transferBalance(sender.id, transferBalanceDto),
+      ).rejects.toThrow(NotFoundException);
+      expect(usersRepository.debit).not.toHaveBeenCalled();
+    });
+
+    it('does not credit the recipient when the debit affected no rows', async () => {
+      usersRepository.findById
+        .mockResolvedValueOnce(sender)
+        .mockResolvedValueOnce(recipient);
+      usersRepository.debit.mockResolvedValue(false);
+
+      await expect(
+        usersService.transferBalance(1, transferBalanceDto),
+      ).rejects.toThrow(BadRequestException);
+      expect(usersRepository.credit).not.toHaveBeenCalled();
+    });
+
+    it('moves the money and drops both cached profiles', async () => {
+      usersRepository.findById
+        .mockResolvedValueOnce(sender)
+        .mockResolvedValueOnce(recipient);
+      usersRepository.debit.mockResolvedValue(true);
+
+      await usersService.transferBalance(1, transferBalanceDto);
+
+      expect(usersRepository.debit).toHaveBeenCalledWith(1, 50.51);
+      expect(usersRepository.credit).toHaveBeenCalledWith(2, 50.51);
+      expect(cacheManager.mdel).toHaveBeenCalledWith(['/users/1', '/users/2']);
     });
   });
 });

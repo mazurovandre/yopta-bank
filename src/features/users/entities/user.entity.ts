@@ -1,5 +1,6 @@
 import {
   BaseEntity,
+  Check,
   Column,
   DeleteDateColumn,
   Entity,
@@ -9,6 +10,7 @@ import {
 import { Exclude } from 'class-transformer';
 import { Avatar } from '@features/avatars/entities/avatar.entity';
 
+@Check('"balance" >= 0')
 @Entity()
 export class User extends BaseEntity {
   @PrimaryGeneratedColumn()
@@ -29,6 +31,22 @@ export class User extends BaseEntity {
 
   @Column({ type: 'varchar', length: 1000, nullable: true })
   description: string;
+
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    default: 0,
+    transformer: {
+      to(value: number) {
+        return value;
+      },
+      from(value: number | null) {
+        return value === null ? null : Number(value);
+      },
+    },
+  })
+  balance: number;
 
   @OneToMany(() => Avatar, (avatar) => avatar.user)
   avatars: Avatar[];
