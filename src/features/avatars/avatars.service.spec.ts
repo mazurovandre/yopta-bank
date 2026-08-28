@@ -77,6 +77,7 @@ describe('AvatarsService', () => {
       expect(avatarsRepository.create).toHaveBeenCalledWith(
         1,
         'fixed-uuid.png',
+        5,
       );
       expect(result).toEqual(mockAvatar);
     });
@@ -93,6 +94,7 @@ describe('AvatarsService', () => {
       expect(avatarsRepository.create).toHaveBeenCalledWith(
         1,
         'fixed-uuid.jpg',
+        5,
       );
     });
 

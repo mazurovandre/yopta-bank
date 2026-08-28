@@ -31,7 +31,10 @@ export class AvatarsService {
     @Inject(IFileService) readonly fileService: IFileService,
   ) {}
 
-  async upload(userId: number, file: IUploadedMulterFile): Promise<Avatar> {
+  async upload(
+    userId: number,
+    file: IUploadedMulterFile,
+  ): Promise<Avatar | null> {
     const activeCount = await this.avatarRepository.countActiveByUserId(userId);
     const maxAvatars = this.configService.get<number>('MAX_USER_AVATARS') ?? 5;
 
@@ -42,7 +45,8 @@ export class AvatarsService {
       throw new BadRequestException(`Max user avatars ${maxAvatars}`);
     }
 
-    const extension = EXTENSION_BY_MIME_TYPE[file.mimetype!] ?? 'png';
+    const mimetype = file.mimetype as string;
+    const extension = EXTENSION_BY_MIME_TYPE[mimetype];
     const filename = `${randomUUID()}.${extension}`;
 
     await this.fileService.uploadFile({
@@ -51,9 +55,25 @@ export class AvatarsService {
       name: filename,
     });
 
+    let avatar: Avatar | null = null;
+
+    try {
+      avatar = await this.avatarRepository.create(userId, filename, maxAvatars);
+    } catch (err) {
+      await this.rollbackSavedFile(filename, userId);
+
+      throw err;
+    }
+
+    if (!avatar) {
+      await this.rollbackSavedFile(filename, userId);
+
+      throw new BadRequestException(`Max user avatars ${maxAvatars}`);
+    }
+
     this.logger.log(`Avatar "${filename}" uploaded for user id=${userId}`);
 
-    return this.avatarRepository.create(userId, filename);
+    return avatar;
   }
 
   async remove(userId: number, avatarId: number): Promise<void> {
@@ -81,5 +101,18 @@ export class AvatarsService {
     }
 
     this.logger.log(`Avatar id=${avatarId} removed for user id=${userId}`);
+  }
+
+  private async rollbackSavedFile(
+    filename: string,
+    userId: number,
+  ): Promise<void> {
+    await this.fileService.removeFile({
+      path: `avatars/${filename}`,
+    });
+
+    this.logger.warn(
+      `Rollback saved S3 file: user id=${userId}, filename=${filename}`,
+    );
   }
 }

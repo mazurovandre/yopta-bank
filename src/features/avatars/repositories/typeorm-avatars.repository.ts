@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { IAvatarsRepository } from '@features/avatars/repositories/avatars.interface';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { Avatar } from '@features/avatars/entities/avatar.entity';
 
 @Injectable()
@@ -9,19 +9,31 @@ export class TypeOrmAvatarsRepository implements IAvatarsRepository {
   constructor(
     @InjectRepository(Avatar)
     private readonly avatarRepository: Repository<Avatar>,
+    private readonly dataSource: DataSource,
   ) {}
 
   countActiveByUserId(userId: number): Promise<number> {
     return this.avatarRepository.count({ where: { user_id: userId } });
   }
 
-  create(userId: number, filename: string): Promise<Avatar> {
-    const avatar = this.avatarRepository.create({
-      user_id: userId,
-      filename,
-    });
+  async create(
+    userId: number,
+    filename: string,
+    limit: number,
+  ): Promise<Avatar | null> {
+    return this.dataSource.transaction(async (manager) => {
+      await manager.query('SELECT pg_advisory_xact_lock($1)', [userId]);
 
-    return this.avatarRepository.save(avatar);
+      const count = await manager.count(Avatar, { where: { user_id: userId } });
+      if (count >= limit) {
+        return null;
+      }
+
+      return manager.save(
+        Avatar,
+        manager.create(Avatar, { user_id: userId, filename }),
+      );
+    });
   }
 
   findActiveByIdAndUserId(id: number, userId: number): Promise<Avatar | null> {
