@@ -262,10 +262,8 @@ describe('UsersService', () => {
     });
 
     it('ejects when the sender does not have enough money', async () => {
-      usersRepository.findById.mockResolvedValue({
-        ...sender,
-        balance: 10,
-      } as User);
+      const sender = { ...mockUser, id: 1, balance: 10 } as User;
+      usersRepository.findById.mockResolvedValue(sender);
 
       await expect(
         usersService.transferBalance(recipient.id, transferBalanceDto),

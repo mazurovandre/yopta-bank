@@ -6,6 +6,7 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
     "target": "ES2021",
     "sourceMap": true,
     "outDir": "./dist",
@@ -18,10 +19,9 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
-      "@common/*": ["src/common/*"],
-      "@auth/*": ["src/auth/*"],
-      "@configs/*": ["src/configs/*"],
-      "@features/*": ["src/features/*"]
+      "@app/utils": ["libs/utils/src"],
+      "@app/utils/*": ["libs/utils/src/*"]
     }
-  }
+  },
+  "exclude": ["apps/**/*", "libs/**/*"]
 }

@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "declaration": false,
+    "outDir": "../../dist/apps/notification-service",
+    "paths": {
+      "@common/*": ["apps/notification-service/src/common/*"],
+      "@configs/*": ["apps/notification-service/src/configs/*"],
+      "@features/*": ["apps/notification-service/src/features/*"]
+    }
+  },
+  "include": ["src/**/*", "jest.config.ts"],
+  "exclude": ["node_modules", "dist", "test"]
+}
