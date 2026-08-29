@@ -55,7 +55,7 @@ import { BalanceResetModule } from '@features/balance-reset/balance-reset.module
         username: configService.get('database.username'),
         password: configService.get('database.password'),
         database: configService.get('database.database'),
-        entities: configService.get('database.entities'),
+        autoLoadEntities: configService.get('database.autoLoadEntities'),
         synchronize: Boolean(configService.get('database.synchronize')),
       }),
       dataSourceFactory(options) {

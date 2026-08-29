@@ -7,6 +7,6 @@ export const databaseConfig = registerAs('database', () => ({
   port: parseInt(process.env.DATABASE_PORT || '5433', 10),
   username: process.env.DATABASE_USER,
   password: process.env.DATABASE_PASSWORD,
-  entities: [__dirname + '/../**/*.entity{.ts,.js}'],
+  autoLoadEntities: true,
   synchronize: true,
 }));
