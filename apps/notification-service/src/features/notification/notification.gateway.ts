@@ -9,11 +9,13 @@ import {
 } from '@nestjs/websockets';
 
 import { Server, Socket } from 'socket.io';
+import { NotificationService } from '@features/notification/notification.service';
 
 @WebSocketGateway()
 export class NotificationGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
+  constructor(private readonly notificationService: NotificationService) {}
   private readonly logger = new Logger(NotificationGateway.name);
 
   @WebSocketServer() io: Server;
@@ -22,11 +24,13 @@ export class NotificationGateway
     this.logger.log('Notification WS initialized');
   }
 
-  handleConnection(client: Socket) {
-    const { sockets } = this.io.sockets;
+  async handleConnection(client: Socket) {
+    await this.notificationService.handleConnection(client, this.io);
+  }
 
-    this.logger.log(`Client id: ${client.id} connected`);
-    this.logger.debug(`Number of connected clients: ${sockets.size}`);
+  sendNotification(userId: number) {
+    this.logger.log(`Sending notification to user id: ${userId}`);
+    this.io.to(userId.toString()).emit('notification', { data: 'hello!' });
   }
 
   handleDisconnect(client: Socket) {
