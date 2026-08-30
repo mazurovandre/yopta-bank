@@ -14,7 +14,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { AuthGuard } from '@auth/auth.guard';
+import { TokenGuard } from '@libs/token/token.guard';
 import { User } from './entities/user.entity';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
@@ -28,7 +28,7 @@ import { TransferBalanceDto } from './dto/transfer-balance.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(TokenGuard)
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}

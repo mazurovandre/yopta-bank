@@ -1,20 +1,11 @@
 import { Module } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { NotificationGateway } from './notification.gateway';
-import { JwtModule } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
 import { NotificationController } from './notification.controller';
+import { TokenModule } from '@libs/token/token.module';
 
 @Module({
-  imports: [
-    JwtModule.registerAsync({
-      global: true,
-      useFactory: (config: ConfigService) => ({
-        secret: config.get('JWT_SECRET'),
-      }),
-      inject: [ConfigService],
-    }),
-  ],
+  imports: [TokenModule],
   providers: [NotificationGateway, NotificationService],
   controllers: [NotificationController],
 })

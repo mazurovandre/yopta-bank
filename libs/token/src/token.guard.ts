@@ -5,15 +5,15 @@ import {
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
-import { JwtPayload } from './jwt-payload.interface';
+import { JwtPayload } from './interfaces/jwt-payload.interface';
+import { TokenService } from './token.service';
 
 @Injectable()
-export class AuthGuard implements CanActivate {
-  private readonly logger = new Logger(AuthGuard.name);
+export class TokenGuard implements CanActivate {
+  private readonly logger = new Logger(TokenGuard.name);
 
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(private readonly tokenService: TokenService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request: Request = context.switchToHttp().getRequest();
@@ -28,19 +28,12 @@ export class AuthGuard implements CanActivate {
     }
 
     try {
-      payload = await this.jwtService.verifyAsync(token);
+      payload = await this.tokenService.verifyAccessToken(token);
     } catch (error) {
       const reason =
         error instanceof Error ? error.message : 'token verification failed';
 
       this.logger.warn(`Access denied: ${reason}`);
-      throw new UnauthorizedException();
-    }
-
-    if (payload.type !== 'access') {
-      this.logger.warn(
-        `Access denied: wrong token type "${payload.type}" for user id=${payload.sub}`,
-      );
       throw new UnauthorizedException();
     }
 

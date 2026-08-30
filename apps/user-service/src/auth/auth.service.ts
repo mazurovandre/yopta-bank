@@ -9,7 +9,7 @@ import {
 import { AuthCredentialsDto } from './dto/auth-credentials.dto';
 import { UsersService } from '@features/users/users.service';
 import { JwtService } from '@nestjs/jwt';
-import { JwtPayload } from './jwt-payload.interface';
+import { JwtPayload } from '@libs/token/interfaces/jwt-payload.interface';
 import { CreateUserDto } from '@features/users/dto/create-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';

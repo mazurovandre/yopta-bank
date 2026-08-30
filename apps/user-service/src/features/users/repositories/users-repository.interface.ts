@@ -1,7 +1,7 @@
 import { CreateUserDto } from '@features/users/dto/create-user.dto';
 import { User } from '@features/users/entities/user.entity';
 import { FindUsersQueryDto } from '@features/users/dto/find-users-query.dto';
-import { Paginated } from '@common/types/paginated.type';
+import { Paginated } from '../../../../../../common/types/paginated.type';
 import { UpdateUserDto } from '@features/users/dto/update-user.dto';
 import { FindMostActiveQueryDto } from '@features/users/dto/find-most-active-query.dto';
 

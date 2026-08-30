@@ -19,8 +19,9 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
-      "@app/utils": ["libs/utils/src"],
-      "@app/utils/*": ["libs/utils/src/*"]
+      "@common/*": ["common/*"],
+      "@libs/token": ["libs/token/src"],
+      "@libs/token/*": ["libs/token/src/*"]
     }
   },
   "exclude": ["apps/**/*", "libs/**/*"]

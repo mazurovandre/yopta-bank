@@ -5,11 +5,12 @@
     "outDir": "../../dist/apps/user-service",
     "paths": {
       "@auth/*": ["apps/user-service/src/auth/*"],
-      "@common/*": ["apps/user-service/src/common/*"],
       "@configs/*": ["apps/user-service/src/configs/*"],
-      "@features/*": ["apps/user-service/src/features/*"]
+      "@features/*": ["apps/user-service/src/features/*"],
+      "@libs/token/*": ["libs/token/src/*"],
+      "@common/*": ["common/*"]
     }
   },
-  "include": ["src/**/*", "jest.config.ts"],
+  "include": ["src/**/*", "../../common/**/*.d.ts", "jest.config.ts"],
   "exclude": ["node_modules", "dist", "test"]
 }

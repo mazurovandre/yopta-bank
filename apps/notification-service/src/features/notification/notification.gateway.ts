@@ -25,12 +25,27 @@ export class NotificationGateway
   }
 
   async handleConnection(client: Socket) {
-    await this.notificationService.handleConnection(client, this.io);
+    this.logger.log(`Client connected: ${client.id}`);
+    const userId = await this.notificationService.authenticate(client);
+
+    if (userId === null) {
+      client.disconnect();
+
+      return;
+    }
+
+    await client.join(this.getUserRoom(userId));
+  }
+
+  private getUserRoom(userId: number): string {
+    return userId.toString();
   }
 
   sendNotification(userId: number) {
     this.logger.log(`Sending notification to user id: ${userId}`);
-    this.io.to(userId.toString()).emit('notification', { data: 'hello!' });
+    this.io
+      .to(this.getUserRoom(userId))
+      .emit('notification', { data: 'hello!' });
   }
 
   handleDisconnect(client: Socket) {

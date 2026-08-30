@@ -22,7 +22,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { AuthGuard } from '@auth/auth.guard';
+import { TokenGuard } from '@libs/token/token.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { IUploadedMulterFile } from '../../providers/files/s3/interfaces/upload-file.interface';
 import { AvatarsService } from '@features/avatars/avatars.service';
@@ -32,7 +32,7 @@ import { Avatar } from '@features/avatars/entities/avatar.entity';
 @ApiTags('Avatars')
 @ApiBearerAuth()
 @ApiUnauthorizedResponse({ description: 'Токен отсутствует или невалиден' })
-@UseGuards(AuthGuard)
+@UseGuards(TokenGuard)
 @Controller('users/me/avatars')
 export class AvatarsController {
   constructor(private readonly avatarService: AvatarsService) {}

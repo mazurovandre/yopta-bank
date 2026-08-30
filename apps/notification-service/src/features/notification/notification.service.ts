@@ -1,17 +1,15 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
-import { Server, Socket } from 'socket.io';
-import { JwtService } from '@nestjs/jwt';
-import { JwtPayload } from '../../../../user-service/src/auth/jwt-payload.interface';
+import { Injectable, Logger } from '@nestjs/common';
+import { Socket } from 'socket.io';
+import { TokenService } from '@libs/token/token.service';
+import { JwtPayload } from '@libs/token/interfaces/jwt-payload.interface';
 
 @Injectable()
 export class NotificationService {
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(private readonly tokenService: TokenService) {}
 
   private readonly logger = new Logger(NotificationService.name);
 
-  async handleConnection(client: Socket, io: Server) {
-    const { sockets } = io.sockets;
-    this.logger.log(`Client connected: ${client.id}, size ${sockets.size}`);
+  async authenticate(client: Socket): Promise<number | null> {
     let userId: number | null = null;
 
     try {
@@ -21,25 +19,18 @@ export class NotificationService {
         throw new Error('No auth header');
       }
 
-      const payload: JwtPayload = await this.jwtService.verifyAsync(authHeader);
-
-      if (payload.type !== 'access') {
-        this.logger.warn(
-          `Access denied: wrong token type "${payload.type}" for user id=${payload.sub}`,
-        );
-        throw new UnauthorizedException();
-      }
+      const payload: JwtPayload =
+        await this.tokenService.verifyAccessToken(authHeader);
 
       userId = payload.sub;
       this.logger.log(`Logged in user: ${userId}`);
     } catch (err) {
       this.logger.error('Invalid auth', err);
-      client.disconnect();
 
-      return;
+      return null;
     }
-    // Go to room
-    client.join(userId.toString());
+
+    return userId;
   }
 
   private extractTokenFromHeader(client: Socket): string | undefined {
