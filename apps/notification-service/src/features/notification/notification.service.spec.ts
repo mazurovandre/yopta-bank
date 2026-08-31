@@ -1,12 +1,18 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Socket } from 'socket.io';
+import { getModelToken } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { NotificationService } from './notification.service';
 import { TokenService } from '@libs/token/token.service';
 import { JwtPayload } from '@libs/token/interfaces/jwt-payload.interface';
+import { TransferNotification } from '@features/notification/schemas/transfer-notification.schema';
 
 describe('NotificationService', () => {
   let notificationService: NotificationService;
   let tokenService: jest.Mocked<Pick<TokenService, 'verifyAccessToken'>>;
+  let transferNotificationModel: jest.Mocked<
+    Pick<Model<TransferNotification>, 'create'>
+  >;
 
   const payload: JwtPayload = { sub: 1, username: 'john', type: 'access' };
 
@@ -15,11 +21,16 @@ describe('NotificationService', () => {
 
   beforeEach(async () => {
     tokenService = { verifyAccessToken: jest.fn() };
+    transferNotificationModel = { create: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         NotificationService,
         { provide: TokenService, useValue: tokenService },
+        {
+          provide: getModelToken(TransferNotification.name),
+          useValue: transferNotificationModel,
+        },
       ],
     }).compile();
 
@@ -74,6 +85,22 @@ describe('NotificationService', () => {
       );
 
       expect(userId).toBeNull();
+    });
+  });
+
+  describe('saveTransfer', () => {
+    it('persists the transfer as a document', async () => {
+      await notificationService.saveTransfer({
+        senderId: 1,
+        recipientId: 2,
+        amount: 50.51,
+      });
+
+      expect(transferNotificationModel.create).toHaveBeenCalledWith({
+        senderId: 1,
+        recipientId: 2,
+        amount: 50.51,
+      });
     });
   });
 });

@@ -2,10 +2,18 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Socket } from 'socket.io';
 import { TokenService } from '@libs/token/token.service';
 import { JwtPayload } from '@libs/token/interfaces/jwt-payload.interface';
+import { TransferBalance } from '@features/notification/interfaces/transfer-balance.interface';
+import { InjectModel } from '@nestjs/mongoose';
+import { TransferNotification } from '@features/notification/schemas/transfer-notification.schema';
+import { Model } from 'mongoose';
 
 @Injectable()
 export class NotificationService {
-  constructor(private readonly tokenService: TokenService) {}
+  constructor(
+    private readonly tokenService: TokenService,
+    @InjectModel(TransferNotification.name)
+    private readonly transferNotificationModel: Model<TransferNotification>,
+  ) {}
 
   private readonly logger = new Logger(NotificationService.name);
 
@@ -31,6 +39,14 @@ export class NotificationService {
     }
 
     return userId;
+  }
+
+  async saveTransfer({ senderId, recipientId, amount }: TransferBalance) {
+    await this.transferNotificationModel.create({
+      senderId,
+      recipientId,
+      amount,
+    });
   }
 
   private extractTokenFromHeader(client: Socket): string | undefined {

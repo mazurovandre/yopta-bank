@@ -76,6 +76,18 @@ services:
     environment:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+  mongo:
+    container_name: mongo
+    image: mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE}
+    volumes:
+      - mongo:/data/db
+    ports:
+      - "27018:27017"
+    restart: unless-stopped
 networks:
   app_network: {}
   db:
@@ -84,3 +96,4 @@ networks:
 volumes:
   minio_storage:
   db:
+  mongo:
