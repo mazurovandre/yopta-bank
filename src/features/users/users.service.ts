@@ -89,8 +89,6 @@ export class UsersService {
     const isDebited = await this.userRepository.debit(userId, amount);
 
     if (!isDebited) {
-      // Списание не прошло по атомарному условию в SQL — значит, баланс
-      // изменился между проверкой выше и самим debit (гонка).
       this.logger.warn(
         `Transfer rejected: debit of ${amount} from user id=${userId} failed`,
       );
