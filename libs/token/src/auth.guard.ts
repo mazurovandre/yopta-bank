@@ -10,8 +10,8 @@ import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { TokenService } from './token.service';
 
 @Injectable()
-export class TokenGuard implements CanActivate {
-  private readonly logger = new Logger(TokenGuard.name);
+export class AuthGuard implements CanActivate {
+  private readonly logger = new Logger(AuthGuard.name);
 
   constructor(private readonly tokenService: TokenService) {}
 

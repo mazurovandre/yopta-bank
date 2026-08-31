@@ -41,11 +41,13 @@ export class NotificationGateway
     return userId.toString();
   }
 
-  sendNotification(userId: number) {
-    this.logger.log(`Sending notification to user id: ${userId}`);
+  sendNotification(userId: number, message: string): void {
+    this.logger.log(
+      `Sending notification to user id: ${userId}, message: ${message}`,
+    );
     this.io
       .to(this.getUserRoom(userId))
-      .emit('notification', { data: 'hello!' });
+      .emit('notification', { data: message });
   }
 
   handleDisconnect(client: Socket) {

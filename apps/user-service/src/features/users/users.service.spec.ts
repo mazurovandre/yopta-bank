@@ -14,6 +14,12 @@ import {
 import { Paginated } from '@common/types/paginated.type';
 import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
 import { TransferBalanceDto } from '@features/users/dto/transfer-balance.dto';
+import { ClientKafka } from '@nestjs/microservices';
+import {
+  TRANSACTION_KAFKA,
+  TRANSFER_BALANCE_EVENT,
+} from '@common/constants/transactions.constants';
+import { TransferBalanceEvent } from '@features/users/events/transfer-balance.event';
 
 jest.mock('bcrypt');
 jest.mock('typeorm-transactional', () => ({
@@ -25,6 +31,7 @@ describe('UsersService', () => {
   let usersService: UsersService;
   let usersRepository: jest.Mocked<IUsersRepository>;
   let cacheManager: jest.Mocked<Pick<Cache, 'mdel'>>;
+  let notificationClient: jest.Mocked<Pick<ClientKafka, 'emit'>>;
 
   const mockUser = {
     id: 1,
@@ -37,6 +44,7 @@ describe('UsersService', () => {
 
   beforeEach(async () => {
     cacheManager = { mdel: jest.fn() };
+    notificationClient = { emit: jest.fn() };
     usersRepository = {
       create: jest.fn(),
       findByUsername: jest.fn(),
@@ -56,6 +64,7 @@ describe('UsersService', () => {
         UsersService,
         { provide: USERS_REPOSITORY, useValue: usersRepository },
         { provide: CACHE_MANAGER, useValue: cacheManager },
+        { provide: TRANSACTION_KAFKA, useValue: notificationClient },
       ],
     }).compile();
 
@@ -250,6 +259,7 @@ describe('UsersService', () => {
         usersService.transferBalance(1, { recipientId: 1, amount: 50 }),
       ).rejects.toThrow(BadRequestException);
       expect(usersRepository.debit).not.toHaveBeenCalled();
+      expect(notificationClient.emit).not.toHaveBeenCalled();
     });
 
     it('throws error when the sender is not exists', async () => {
@@ -259,6 +269,7 @@ describe('UsersService', () => {
         usersService.transferBalance(sender.id, transferBalanceDto),
       ).rejects.toThrow(NotFoundException);
       expect(usersRepository.debit).not.toHaveBeenCalled();
+      expect(notificationClient.emit).not.toHaveBeenCalled();
     });
 
     it('ejects when the sender does not have enough money', async () => {
@@ -269,6 +280,7 @@ describe('UsersService', () => {
         usersService.transferBalance(recipient.id, transferBalanceDto),
       ).rejects.toThrow(BadRequestException);
       expect(usersRepository.debit).not.toHaveBeenCalled();
+      expect(notificationClient.emit).not.toHaveBeenCalled();
     });
 
     it('throw error when recipient does not exist', async () => {
@@ -279,6 +291,7 @@ describe('UsersService', () => {
         usersService.transferBalance(sender.id, transferBalanceDto),
       ).rejects.toThrow(NotFoundException);
       expect(usersRepository.debit).not.toHaveBeenCalled();
+      expect(notificationClient.emit).not.toHaveBeenCalled();
     });
 
     it('does not credit the recipient when the debit affected no rows', async () => {
@@ -291,6 +304,7 @@ describe('UsersService', () => {
         usersService.transferBalance(1, transferBalanceDto),
       ).rejects.toThrow(BadRequestException);
       expect(usersRepository.credit).not.toHaveBeenCalled();
+      expect(notificationClient.emit).not.toHaveBeenCalled();
     });
 
     it('moves the money and drops both cached profiles', async () => {
@@ -304,6 +318,10 @@ describe('UsersService', () => {
       expect(usersRepository.debit).toHaveBeenCalledWith(1, 50.51);
       expect(usersRepository.credit).toHaveBeenCalledWith(2, 50.51);
       expect(cacheManager.mdel).toHaveBeenCalledWith(['/users/1', '/users/2']);
+      expect(notificationClient.emit).toHaveBeenCalledWith(
+        TRANSFER_BALANCE_EVENT,
+        new TransferBalanceEvent(1, 2, 50.51),
+      );
     });
   });
 });

@@ -20,13 +20,22 @@ import { FindMostActiveQueryDto } from '@features/users/dto/find-most-active-que
 import { TransferBalanceDto } from './dto/transfer-balance.dto';
 import { runOnTransactionCommit, Transactional } from 'typeorm-transactional';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
+import { ClientKafka } from '@nestjs/microservices';
+import { TransferBalanceEvent } from './events/transfer-balance.event';
+import {
+  TRANSACTION_KAFKA,
+  TRANSFER_BALANCE_EVENT,
+} from '@common/constants/transactions.constants';
 
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
 
   constructor(
-    @Inject(USERS_REPOSITORY) private readonly userRepository: IUsersRepository,
+    @Inject(TRANSACTION_KAFKA)
+    private readonly notificationClient: ClientKafka,
+    @Inject(USERS_REPOSITORY)
+    private readonly userRepository: IUsersRepository,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
@@ -106,6 +115,10 @@ export class UsersService {
         `/users/${userId}`,
         `/users/${recipientId}`,
       ]);
+      this.notificationClient.emit(
+        TRANSFER_BALANCE_EVENT,
+        new TransferBalanceEvent(userId, recipientId, amount),
+      );
     });
   }
 

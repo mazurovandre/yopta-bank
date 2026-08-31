@@ -7,11 +7,11 @@ import {
 } from '@nestjs/common';
 import { BalanceResetService } from '@features/balance-reset/balance-reset.service';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { TokenGuard } from '@libs/token/token.guard';
+import { AuthGuard } from '@libs/token/auth.guard';
 
 @ApiTags('balance-reset')
 @ApiBearerAuth()
-@UseGuards(TokenGuard)
+@UseGuards(AuthGuard)
 @Controller('balance-reset')
 export class BalanceResetController {
   constructor(private readonly balanceResetService: BalanceResetService) {}

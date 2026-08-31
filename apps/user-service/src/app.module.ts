@@ -12,6 +12,7 @@ import { DataSource } from 'typeorm';
 import { addTransactionalDataSource } from 'typeorm-transactional';
 import { BullModule } from '@nestjs/bullmq';
 import { BalanceResetModule } from '@features/balance-reset/balance-reset.module';
+import { kafkaConfig } from '@common/configs/kafka.config';
 
 @Module({
   imports: [
@@ -29,7 +30,7 @@ import { BalanceResetModule } from '@features/balance-reset/balance-reset.module
     }),
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [databaseConfig, cacheConfig],
+      load: [databaseConfig, cacheConfig, kafkaConfig],
     }),
     CacheModule.registerAsync({
       isGlobal: true,

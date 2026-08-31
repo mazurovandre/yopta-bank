@@ -6,6 +6,9 @@ import { User } from './entities/user.entity';
 import { USERS_REPOSITORY } from '@features/users/repositories/users-repository.interface';
 import { TypeOrmUsersRepository } from '@features/users/repositories/typeorm-users.repository';
 import { TokenModule } from '@libs/token/token.module';
+import { ClientsModule, Transport } from '@nestjs/microservices';
+import { TRANSACTION_KAFKA } from '@common/constants/transactions.constants';
+import { ConfigService } from '@nestjs/config';
 
 @Module({
   controllers: [UsersController],
@@ -17,6 +20,29 @@ import { TokenModule } from '@libs/token/token.module';
     },
   ],
   exports: [UsersService],
-  imports: [TypeOrmModule.forFeature([User]), TokenModule],
+  imports: [
+    TypeOrmModule.forFeature([User]),
+    TokenModule,
+    ClientsModule.registerAsync([
+      {
+        name: TRANSACTION_KAFKA,
+        useFactory: (configService: ConfigService) => {
+          const host = configService.get<string>('kafka.host');
+          const port = configService.get<number>('kafka.port');
+
+          return {
+            transport: Transport.KAFKA,
+            options: {
+              client: {
+                clientId: 'notification',
+                brokers: [`${host}:${port}`],
+              },
+            },
+          };
+        },
+        inject: [ConfigService],
+      },
+    ]),
+  ],
 })
 export class UsersModule {}
